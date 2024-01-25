@@ -2,29 +2,35 @@ import java.util.*;
 
 public class GameLogic implements PlayableLogic {
 
-    ConcretePiece[][] gameBoard = new ConcretePiece[getBoardSize()][getBoardSize()];
-    ConcretePlayer secondPlayer = new ConcretePlayer(false); // Attackers
-    ConcretePlayer firstPlayer = new ConcretePlayer(true); // Defender
-    Position[] corners = {new Position(0,0), new Position(10,0), new Position(0,10), new Position(10,10)};
+    private ConcretePiece[][] gameBoard;
+    private ConcretePlayer secondPlayer = secondPlayer = new ConcretePlayer(false); // Attackers
+    private ConcretePlayer firstPlayer = new ConcretePlayer(true); // Defender
+    private final Position[] corners = {new Position(0,0), new Position(10,0), new Position(0,10), new Position(10,10)};
 
-    int currentWinner = 0; // 0 = No one won yet. 1 = Defenders won last. -1 = Attackers won last.
-    boolean isSecondPlayerTurn = true;
+    private int currentWinner;
+    private boolean isSecondPlayerTurn = true;
 
 
-    ArrayList<ArrayList<Position>> firstPlayerPositions = new ArrayList<>();
-    ArrayList<ArrayList<Position>> secondPlayerPositions = new ArrayList<>();
+    private ArrayList<ArrayList<Position>> firstPlayerPositions;
+    private ArrayList<ArrayList<Position>> secondPlayerPositions;
 
-    private ArrayList[][] squareHistory = new ArrayList[getBoardSize()][getBoardSize()];
+    private ArrayList[][] squareHistory;
 
 
 
     public GameLogic() {
+
+
         this.start();
-
-
     }
 
-
+    /**
+     * move: using the two positions, the function checks if the move is legit using different
+     * other functions.
+     * @param a The starting position of the piece.
+     * @param b The destination position for the piece.
+     * @return true if the step is legit according to the game's logic
+     */
 
     @Override
     public boolean move(Position a, Position b) {
@@ -39,9 +45,10 @@ public class GameLogic implements PlayableLogic {
                 if(isInCorner(b) && getPieceAtPosition(a) instanceof Pawn){
                     return false;
                 }
-
+                // if all the conditions for a legit move are fulfilled,
+                // then the actual moveIt will do the move
                 moveIt(a, b);
-
+                // after a move, the player turn is changed via:
                 isSecondPlayerTurn = !isSecondPlayerTurn();
                 return true;
             }
@@ -49,6 +56,7 @@ public class GameLogic implements PlayableLogic {
 
         return false;
     }
+
 
     private void eat(Position b, Player currentPlayer) {
         // TODO: [v] eating against the borders
@@ -205,10 +213,11 @@ public class GameLogic implements PlayableLogic {
 
             this.gameBoard[b.getCol()][b.getRow()] = (ConcretePiece) getPieceAtPosition(a);
             this.gameBoard[a.getCol()][a.getRow()] = null;
+            eat(b, getPieceAtPosition(b).getOwner());
             isGameFinished();
             //printAroundKing();
 
-            eat(b, getPieceAtPosition(b).getOwner());
+
 
     }
 
@@ -575,21 +584,25 @@ public class GameLogic implements PlayableLogic {
 
     @Override
     public void reset() {
-
+        secondPlayer = new ConcretePlayer(false); // Attackers
+        firstPlayer = new ConcretePlayer(true); // Defender
             this.isSecondPlayerTurn = true;
-            //secondPlayer.getWins = 0;
-            //firstPlayer.getWins = 0;
             for(int i = 0; i < getBoardSize(); i++){
                 for (int j = 0; j < getBoardSize(); j++) {
                     this.gameBoard[i][j] = null;
                 }
             }
 
-            start();
+            this.start();
 
     }
 
     public void start(){
+        gameBoard = new ConcretePiece[getBoardSize()][getBoardSize()];
+        currentWinner = 0; // 0 = No one won yet. 1 = Defenders won last. -1 = Attackers won last.
+        firstPlayerPositions = new ArrayList<>();
+        secondPlayerPositions = new ArrayList<>();
+        squareHistory = new ArrayList[getBoardSize()][getBoardSize()];
 
         // DEFENDERS POSITION TRACKER
         for (int i = 0; i <= 14; i++) {
