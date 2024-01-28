@@ -6,7 +6,6 @@ Welcome to Viking Chess, a captivating and strategic game built using Object-Ori
 
 - [Introduction](#introduction)
 - [Features](#features)
-- [Usage](#usage)
 - [Tests](#tests)
 - [Images](#images)
 
