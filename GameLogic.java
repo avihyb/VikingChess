@@ -848,7 +848,6 @@ public class GameLogic implements PlayableLogic {
 
     @Override
     public void undoLastMove() {
-        System.out.println(gameBoardHistory.size());
         if(!gameBoardHistory.isEmpty()){
             if(gameBoardHistory.size() > 1) {
                 gameBoardHistory.pop();
