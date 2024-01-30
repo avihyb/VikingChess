@@ -2,25 +2,27 @@ import java.util.*;
 
 public class GameLogic implements PlayableLogic {
 
-    private ConcretePiece[][] gameBoard;
-    private ConcretePlayer secondPlayer = secondPlayer = new ConcretePlayer(false); // Attackers
-    private ConcretePlayer firstPlayer = new ConcretePlayer(true); // Defender
+    private ConcretePiece[][] gameBoard; // Main GameBoard, which holds the pieces in their position
+    private Stack<ConcretePiece[][]> gameBoardHistory; // Holds snapshots of the GameBoard after any movement
+    private ConcretePlayer secondPlayer = new ConcretePlayer(false); // Attacker player
+    private ConcretePlayer firstPlayer = new ConcretePlayer(true); // Defender player
     private final Position[] corners = {new Position(0,0), new Position(10,0), new Position(0,10), new Position(10,10)};
 
-    private int currentWinner;
-    private boolean isSecondPlayerTurn = true;
+    private int currentWinner; // variable that helps to know which player has won recently
+    private boolean isSecondPlayerTurn = true; // first turn is for the attackers, therefore, it's initialized to be true
 
 
-    private ArrayList<ArrayList<Position>> firstPlayerPositions;
-    private ArrayList<ArrayList<Position>> secondPlayerPositions;
+    private ArrayList<ArrayList<Position>> firstPlayerPositions; // Holds each defender pieces positions' history (index = id)
+    private ArrayList<ArrayList<Position>> secondPlayerPositions; // Holds each attacker pieces positions' history (index = id)
 
-    private ArrayList[][] squareHistory;
+    private ArrayList[][] squareHistory; // Each index will hold the different pieces that stepped on it
 
 
-
+    /**
+     * Constructor: Upon creating a new gameLogic, the game starts according
+     * to the gameLogic methods.
+     */
     public GameLogic() {
-
-
         this.start();
     }
 
@@ -57,7 +59,14 @@ public class GameLogic implements PlayableLogic {
         return false;
     }
 
-
+    /**
+     * Eat: After each move on the board, this function
+     * checks the possibility of capturing the opponent piece, if possible.
+     * Capturing is only allowed to pieces who are Pawn and not King.
+     * The check is performed using four functions that check each direction.
+     * @param b destination
+     * @param currentPlayer who's made the move
+     */
     private void eat(Position b, Player currentPlayer) {
         // TODO: [v] eating against the borders
         //       [v] sandwiching
@@ -162,7 +171,17 @@ public class GameLogic implements PlayableLogic {
         }
     }
 
-
+    /**
+     * isBlocked: Upon an attempted move, this function
+     * returns true if the piece is blocked on the board
+     * which will result in not moving.
+     * The calculation is performed by checking the desired direction
+     * of movement (using differentials) and checks if on the path there are
+     * any blocking pieces.
+     * @param a beginning position
+     * @param b desired destination
+     * @return true if it's blocked by other pieces on the path
+     */
     public boolean isBlocked(Position a, Position b) {
         int dCol = 0;
         int dRow = 0;
@@ -189,6 +208,11 @@ public class GameLogic implements PlayableLogic {
         return false;
     }
 
+    /**
+     * isInCorner:
+     * @param p checked position
+     * @return true if the position is in the game board's corners
+     */
     public boolean isInCorner(Position p){
         for (Position corner : corners) {
             if (p.getRow() == corner.getRow() && p.getCol() == corner.getCol()) {
@@ -199,7 +223,11 @@ public class GameLogic implements PlayableLogic {
     }
 
 
-
+    /**
+     * MoveIt: performs the actual movement and changes the game board.
+     * @param a source position
+     * @param b destination position
+     */
     public void moveIt(Position a, Position b){
             if(getPieceAtPosition(a).getOwner() == secondPlayer){
                 this.secondPlayerPositions.get(getPieceAtPosition(a).getID()).add(b);
@@ -214,12 +242,27 @@ public class GameLogic implements PlayableLogic {
             this.gameBoard[b.getCol()][b.getRow()] = (ConcretePiece) getPieceAtPosition(a);
             this.gameBoard[a.getCol()][a.getRow()] = null;
             eat(b, getPieceAtPosition(b).getOwner());
+            ConcretePiece[][] gameSnapshot = copyGameBoard();
+            gameBoardHistory.push(gameSnapshot);
             isGameFinished();
             //printAroundKing();
-
-
-
     }
+
+    /**
+     * copyGameBoard: creates a deepCopy of the gameBoard
+     * @return deepCopy of the gameBoard
+     */
+    private ConcretePiece[][] copyGameBoard() {
+        ConcretePiece[][] deepCopy = new ConcretePiece[getBoardSize()][getBoardSize()];
+        for (int i = 0; i < getBoardSize(); i++) {
+            for (int j = 0; j < getBoardSize(); j++) {
+                deepCopy[i][j] = gameBoard[i][j];
+            }
+        }
+
+        return deepCopy;
+    }
+
 
     private void printAroundKing() {
         Position kingPos = firstPlayerPositions.get(7).get(firstPlayerPositions.get(7).size() - 1);
@@ -232,7 +275,11 @@ public class GameLogic implements PlayableLogic {
         }
     }
 
-
+    /**
+     * getPieceAtPosition: returns the piece which is in the current position
+     * @param position The position for which to retrieve the piece.
+     * @return ConcretePiece
+     */
     @Override
     public ConcretePiece getPieceAtPosition(Position position) {
         if (!isOutside(position)) {
@@ -248,6 +295,10 @@ public class GameLogic implements PlayableLogic {
         return (Pawn) gameBoard[position.getCol()][position.getRow()];
     }
 
+    /**
+     * clear: removes a piece from a position
+     * @param p position
+     */
     public void clear(Position p){
         if(getPieceAtPosition(p).getOwner() == firstPlayer){
             this.firstPlayerPositions.get(getPieceAtPosition(p).getID()).clear();
@@ -257,21 +308,39 @@ public class GameLogic implements PlayableLogic {
         gameBoard[p.getCol()][p.getRow()] = null;
     }
 
+    /**
+     * isOutside: checks if a position is outside the game board's borders
+     * @param p position
+     * @return true if the position is outside the board
+     */
     public boolean isOutside(Position p){
         return (p.getRow() >= getBoardSize() || p.getCol() >= getBoardSize()) ||
                 (p.getRow() < 0 || p.getCol() < 0);
     }
 
+    /**
+     * getSecondPlayer:
+     * @return secondPlayer
+     */
     @Override
     public Player getSecondPlayer() {
         return secondPlayer;
     }
 
+    /**
+     * getFirstPlayer:
+     * @return firstPlayer
+     */
     @Override
     public Player getFirstPlayer() {
         return firstPlayer;
     }
 
+    /**
+     * isGameFinished: checks if any of the winning
+     * scenarios has happened on the board.
+     * @return true if any of the sides won
+     */
     @Override
     public boolean isGameFinished() {
         //      [v] king in corners (PlayerOne wins + 1)
@@ -298,6 +367,12 @@ public class GameLogic implements PlayableLogic {
         return false;
 
 }
+
+    /**
+     * computeSteps: receives an ArrayList of positions, and computes steps
+     * @param pHistory positions history
+     * @return number of steps performed
+     */
     public static int computeSteps(ArrayList<Position> pHistory){
         int steps = 0;
         for (int i = 1; i < pHistory.size(); i++) {
@@ -310,19 +385,29 @@ public class GameLogic implements PlayableLogic {
 
         return steps;
     }
-   Comparator<ArrayList<Position>> stepsComperator = new Comparator<>() {
+
+    /**
+     * stepsComparator: Comparator for sorting ArrayLists of Positions
+     * based on the number of steps and, if equal, the IDs of the pieces at their final positions.
+     */
+   Comparator<ArrayList<Position>> stepsComparator = new Comparator<>() {
        @Override
        public int compare(ArrayList o1, ArrayList o2) {
-           if((o1.size() == o2.size() && !o1.isEmpty() && !o2.isEmpty())){
+           if(o1.size() == o2.size() && !o1.isEmpty()){
                 return getPieceAtPosition((Position) o1.get(o1.size()-1)).getID() - getPieceAtPosition((Position) o2.get(o2.size()-1)).getID();
            }
            return o1.size() - o2.size();
        }
    };
 
+    /**
+     * printStats: upon a finished game this function is called
+     * and prints statistics according to the game.
+     * @param attackersWon to know which player won
+     */
     private void printStats(boolean attackersWon) {
-        secondPlayerPositions.sort(stepsComperator);
-        firstPlayerPositions.sort(stepsComperator);
+        secondPlayerPositions.sort(stepsComparator);
+        firstPlayerPositions.sort(stepsComparator);
         if(attackersWon){
             printAttackersHistory();
             printDefendersHistory();
@@ -344,7 +429,14 @@ public class GameLogic implements PlayableLogic {
         System.out.println();
 
     }
-
+    /**
+     * compareSquareHistory: Comparator for sorting Positions based on the size of their corresponding
+     * square history lists.
+     * If sizes are equal, it further compares based on column
+     * and row indices of the Positions.
+     * Sorting is done in descending order of
+     * square history list sizes.
+     */
     Comparator<Position> compareSquareHistory = new Comparator<Position>() {
         @Override
         public int compare(Position o1, Position o2) {
@@ -360,6 +452,9 @@ public class GameLogic implements PlayableLogic {
         }
     };
 
+    /**
+     * printSquareHistory: prints how many different pieces have stepped on a position.
+     */
     private void printSquaresHistory() {
         ArrayList<Position> squaresWithHistory = new ArrayList<>();
         for (int i = 0; i < squareHistory.length; i++) {
@@ -377,6 +472,9 @@ public class GameLogic implements PlayableLogic {
         }
     }
 
+    /**
+     * printPiecesTotalTravel: prints pieces that traveled and their positions' history.
+     */
     private void printPiecesTotalTravel() {
         ArrayList<ArrayList<Position>> allPos = new ArrayList<>();
         for (int i = 0; i < firstPlayerPositions.size(); i++) {
@@ -409,6 +507,15 @@ public class GameLogic implements PlayableLogic {
 
 
     }
+
+    /**
+     * travelComparator:
+     *  Comparator for sorting ArrayLists of Positions based on the total steps
+     *  taken to reach their final positions.
+     *  If step counts are equal, it further compares based on the IDs of the pieces at their final positions.
+     *  If both are equal, it considers the current game winner and prioritizes the secondPlayer.
+     *  Sorting is done in descending order of step counts.
+     */
     Comparator<ArrayList<Position>> travelComparator = new Comparator<ArrayList<Position>>() {
         @Override
         public int compare(ArrayList<Position> o1, ArrayList<Position> o2) {
@@ -428,6 +535,9 @@ public class GameLogic implements PlayableLogic {
         }
     };
 
+    /**
+     * printAttackersHistory: prints Attackers' position history.
+     */
     private void printAttackersHistory(){
         for (int i = 0; i < secondPlayerPositions.size(); i++) {
             if(secondPlayerPositions.get(i).size() > 1 && secondPlayerPositions.get(i).get(0) != null) {
@@ -446,6 +556,9 @@ public class GameLogic implements PlayableLogic {
         }
     }
 
+    /**
+     * printDefendersHistory: prints Defenders' position history.
+     */
     private void printDefendersHistory(){
         for (int i = 0; i < firstPlayerPositions.size(); i++) {
             if(firstPlayerPositions.get(i) != null && !firstPlayerPositions.get(i).isEmpty() && firstPlayerPositions.get(i).size() > 1 && firstPlayerPositions.get(i).get(0) != null) {
@@ -468,6 +581,9 @@ public class GameLogic implements PlayableLogic {
         }
     }
 
+    /**
+     * printStars: prints 75 stars to divide between printed statistics
+     */
     private void printStars(){
         for (int i = 0; i < 75; i++) {
             System.out.print("*");
@@ -475,10 +591,13 @@ public class GameLogic implements PlayableLogic {
     }
 
 
-
+    /** killsComparator:
+     * Comparator for sorting Pawns based on the number of kills they have achieved.
+     * If kill counts are equal, it further compares based on the IDs of the Pawns.
+     * If both are equal, it considers the current game winner and prioritizes the secondPlayer.
+     * Sorting is done in descending order of kill counts.
+     */
     Comparator<Pawn> killsComparator = new Comparator<Pawn>() {
-
-
         @Override
         public int compare(Pawn o1, Pawn o2) {
             if(o1.getKills() == o2.getKills()){
@@ -493,9 +612,11 @@ public class GameLogic implements PlayableLogic {
             }
             return o2.getKills() - o1.getKills();
         }
-
-
     };
+
+    /**
+     * printKills: prints the kills of pieces who had captured other pieces and stayed until the end of the game.
+     */
     private void printKills(){
         ArrayList<Pawn> leftPieces = new ArrayList<Pawn>();
         for (int i = 0; i < getBoardSize(); i++) {
@@ -508,7 +629,6 @@ public class GameLogic implements PlayableLogic {
                 }
             }
         }
-
         leftPieces.sort(killsComparator);
         for (int i = 0; i < leftPieces.size(); i++) {
             if(leftPieces.get(i).getOwner() == firstPlayer){
@@ -520,6 +640,12 @@ public class GameLogic implements PlayableLogic {
         }
 
     }
+
+    /**
+     * kingCaptured: each game move/iteration this function checks the latest position of the kind
+     * and if he is surrounded according to game laws.
+     * @return true if the king is surrounded by four attackers, or by 3 and against the border
+     */
     private boolean kingCaptured() {
         Position kingPos = firstPlayerPositions.get(7).get(firstPlayerPositions.get(7).size() - 1);
         int attackers = 0;
@@ -555,6 +681,11 @@ public class GameLogic implements PlayableLogic {
         return attackers == 4;
     }
 
+
+    /**
+     * secondTeamEliminated: checks if the attackers' array is empty which points on elimination of the team
+     * @return true if all the attackers' pieces have been captured
+     */
     private boolean secondTeamEliminated() {
         for (int i = 0; i < secondPlayerPositions.size(); i++) {
             if(!secondPlayerPositions.get(i).isEmpty()){
@@ -564,6 +695,10 @@ public class GameLogic implements PlayableLogic {
         return true;
     }
 
+    /**
+     * kingInCorners: checks if the game made it to the corners
+     * @return true of the king has got to one of the board's corners
+     */
     public boolean kingInCorners(){
 
     if(gameBoard[0][0] instanceof King || gameBoard[10][0] instanceof King ||
@@ -575,13 +710,18 @@ public class GameLogic implements PlayableLogic {
 }
 
 
-
-
+    /**
+     * isSecondPlayerTurn:
+     * @return true if it's attackers move
+     */
     @Override
     public boolean isSecondPlayerTurn() {
         return isSecondPlayerTurn;
     }
 
+    /**
+     * reset: initializes the game and statistics and starts again.
+     */
     @Override
     public void reset() {
         secondPlayer = new ConcretePlayer(false); // Attackers
@@ -597,12 +737,17 @@ public class GameLogic implements PlayableLogic {
 
     }
 
+    /**
+     * start: initializes all the data structures needed for the game.
+     *        initializes all the pieces on the board.
+     */
     public void start(){
         gameBoard = new ConcretePiece[getBoardSize()][getBoardSize()];
         currentWinner = 0; // 0 = No one won yet. 1 = Defenders won last. -1 = Attackers won last.
         firstPlayerPositions = new ArrayList<>();
         secondPlayerPositions = new ArrayList<>();
         squareHistory = new ArrayList[getBoardSize()][getBoardSize()];
+        gameBoardHistory = new Stack<>();
 
         // DEFENDERS POSITION TRACKER
         for (int i = 0; i <= 14; i++) {
@@ -638,9 +783,15 @@ public class GameLogic implements PlayableLogic {
             }
         }
 
+        ConcretePiece[][] initialSnapshot = copyGameBoard();
+        gameBoardHistory.clear(); // every new game results
+        // in clearing the game history to prevent undo to a previous game
+        gameBoardHistory.push(initialSnapshot);
     }
 
-
+    /**
+     * defenderInitializer: initializes the first team (defenders) on the game board.
+     */
     private void defenderInitializer() {
         int id = 2;
         gameBoard[5][3] = new Pawn(this.firstPlayer, 1);
@@ -660,6 +811,9 @@ public class GameLogic implements PlayableLogic {
         }
     }
 
+    /**
+     * attackersInitializer: initializes the second team (attackers) on the game board.
+     */
     private void attackerInitializer() {
         for (int i = 0; i < 5; i++) {
             gameBoard[i + 3][0] = new Pawn(this.secondPlayer, i +1);
@@ -686,17 +840,56 @@ public class GameLogic implements PlayableLogic {
 
     }
 
+    /**
+     * undoLastMove: using a data structure of stack that holds
+     * snapshots of every single move on the board as gameBoards[][] of ConcretePieces.
+     * This function can return backwards in game history without interrupting game wins / player turns abuse.
+     */
 
     @Override
     public void undoLastMove() {
-
+        System.out.println(gameBoardHistory.size());
+        if(!gameBoardHistory.isEmpty()){
+            if(gameBoardHistory.size() > 1) {
+                gameBoardHistory.pop();
+                ConcretePiece[][] lastMoveBoard = gameBoardHistory.pop();
+                restoreSnapshot(lastMoveBoard);
+                gameBoardHistory.push(lastMoveBoard);
+                this.isSecondPlayerTurn = !isSecondPlayerTurn();
+            } else {
+                ConcretePiece[][] lastMoveBoard = gameBoardHistory.pop();
+                restoreSnapshot(lastMoveBoard);
+                gameBoardHistory.push(lastMoveBoard);
+            }
+        }
     }
 
+    /**
+     * restoreSnapshot: initializes the gameBoard to be as the desired snapshot.
+     * @param snapshot desired snapshot (usually one step backward)
+     */
+    private void restoreSnapshot(ConcretePiece[][] snapshot){
+        for (int i = 0; i < getBoardSize(); i++) {
+            for (int j = 0; j < getBoardSize(); j++) {
+                gameBoard[i][j] = snapshot[i][j];
+            }
+        }
+    }
+
+    /**
+     * getBoardSize: Viking Chess board is 11x11
+     * @return 11
+     */
     @Override
     public int getBoardSize() {
         return 11;
     }
 
+    /**
+     * insideBoard: checks if a position is within the board.
+     * @param p position
+     * @return true if the position is inside the board.
+     */
     public boolean insideBoard(Position p){
         return (p.getRow() <= getBoardSize() && p.getCol() <= getBoardSize()) &&
                 (p.getCol() >= 0 && p.getRow() >= 0);
