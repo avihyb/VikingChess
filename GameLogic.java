@@ -237,7 +237,7 @@ public class GameLogic implements PlayableLogic {
                 this.firstPlayerPositions.get(getPieceAtPosition(a).getID()).add(b);
             }
            //System.out.println(getPieceAtPosition(a).getID()+"moved from"+a.toString()+" to "+b.toString());
-
+//s
             if(squareHistory[b.getCol()][b.getRow()].isEmpty()){
                 squareHistory[b.getCol()][b.getRow()].add(getPieceAtPosition(a));
             } else {
