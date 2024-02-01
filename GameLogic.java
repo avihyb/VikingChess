@@ -3,6 +3,8 @@ import java.util.*;
 public class GameLogic implements PlayableLogic {
 
     private ConcretePiece[][] gameBoard; // Main GameBoard, which holds the pieces in their position
+
+    private ConcretePiece[][] refBoard; // Used to have the initial board and pos and ids
     private Stack<ConcretePiece[][]> gameBoardHistory; // Holds snapshots of the GameBoard after any movement
     private ConcretePlayer secondPlayer = new ConcretePlayer(false); // Attacker player
     private ConcretePlayer firstPlayer = new ConcretePlayer(true); // Defender player
@@ -15,7 +17,7 @@ public class GameLogic implements PlayableLogic {
     private ArrayList<ArrayList<Position>> firstPlayerPositions; // Holds each defender pieces positions' history (index = id)
     private ArrayList<ArrayList<Position>> secondPlayerPositions; // Holds each attacker pieces positions' history (index = id)
 
-    private ArrayList[][] squareHistory; // Each index will hold the different pieces that stepped on it
+    private ArrayList[][] squareHistory = new ArrayList[getBoardSize()][getBoardSize()]; // Each index will hold the different pieces that stepped on it
 
 
     /**
@@ -85,7 +87,7 @@ public class GameLogic implements PlayableLogic {
         if(!isOutside(LEFT)) {
             if (getPieceAtPosition(LEFT) != null) {
                 if (getPieceAtPosition(LEFT).getOwner() != currentPlayer) {
-                    if (isOutside(LEFT2) && getPieceAtPosition(LEFT) instanceof Pawn) {
+                    if ((isOutside(LEFT2) || isInCorner(LEFT2)) && getPieceAtPosition(LEFT) instanceof Pawn) {
                         getPawnAtPosition(b).addKill();
                         clear(LEFT);
                     } else {
@@ -108,7 +110,7 @@ public class GameLogic implements PlayableLogic {
         if(!isOutside(RIGHT)) {
             if (getPieceAtPosition(RIGHT) != null) {
                 if (getPieceAtPosition(RIGHT).getOwner() != currentPlayer) {
-                    if (isOutside(RIGHT2) && getPieceAtPosition(RIGHT) instanceof Pawn) {
+                    if ((isOutside(RIGHT2) || isInCorner(RIGHT2)) && getPieceAtPosition(RIGHT) instanceof Pawn) {
                         getPawnAtPosition(b).addKill();
                         clear(RIGHT);
                     } else {
@@ -131,7 +133,7 @@ public class GameLogic implements PlayableLogic {
         if(!isOutside(UP)) {
             if (getPieceAtPosition(UP) != null) {
                 if (getPieceAtPosition(UP).getOwner() != currentPlayer) {
-                    if (isOutside(UP2) && getPieceAtPosition(UP) instanceof Pawn) {
+                    if ((isOutside(UP2) || isInCorner(UP2)) && getPieceAtPosition(UP) instanceof Pawn) {
                         getPawnAtPosition(b).addKill();
                         clear(UP);
                     } else {
@@ -154,7 +156,7 @@ public class GameLogic implements PlayableLogic {
         if(!isOutside(DOWN)){
         if(getPieceAtPosition(DOWN) != null) {
             if (getPieceAtPosition(DOWN).getOwner() != currentPlayer) {
-                if (isOutside(DOWN2) && getPieceAtPosition(DOWN) instanceof Pawn) {
+                if ((isOutside(DOWN2) || isInCorner(DOWN2)) && getPieceAtPosition(DOWN) instanceof Pawn) {
                     getPawnAtPosition(b).addKill();
                     clear(DOWN);
                 } else {
@@ -234,11 +236,16 @@ public class GameLogic implements PlayableLogic {
             } else {
                 this.firstPlayerPositions.get(getPieceAtPosition(a).getID()).add(b);
             }
-            //System.out.println(getPieceAtPosition(a).getID()+"moved from"+a.toString()+" to "+b.toString());
-            if(!squareHistory[b.getCol()][b.getRow()].contains(getPieceAtPosition(new Position(a.getCol(), a.getRow())))){
-                squareHistory[b.getCol()][b.getRow()].add(getPieceAtPosition(new Position(a.getCol(), a.getRow())));
-            }
+           //System.out.println(getPieceAtPosition(a).getID()+"moved from"+a.toString()+" to "+b.toString());
 
+            if(squareHistory[b.getCol()][b.getRow()].isEmpty()){
+                squareHistory[b.getCol()][b.getRow()].add(getPieceAtPosition(a));
+            } else {
+                    if(!squareHistory[b.getCol()][b.getRow()].get(0).equals(getPieceAtPosition(a))) {
+                        squareHistory[b.getCol()][b.getRow()].add(getPieceAtPosition(a));
+                    }
+
+            }
             this.gameBoard[b.getCol()][b.getRow()] = (ConcretePiece) getPieceAtPosition(a);
             this.gameBoard[a.getCol()][a.getRow()] = null;
             eat(b, getPieceAtPosition(b).getOwner());
@@ -300,11 +307,6 @@ public class GameLogic implements PlayableLogic {
      * @param p position
      */
     public void clear(Position p){
-        if(getPieceAtPosition(p).getOwner() == firstPlayer){
-            this.firstPlayerPositions.get(getPieceAtPosition(p).getID()).clear();
-        } else {
-            this.secondPlayerPositions.get(getPieceAtPosition(p).getID()).clear();
-        }
         gameBoard[p.getCol()][p.getRow()] = null;
     }
 
@@ -394,7 +396,13 @@ public class GameLogic implements PlayableLogic {
        @Override
        public int compare(ArrayList o1, ArrayList o2) {
            if(o1.size() == o2.size() && !o1.isEmpty()){
-                return getPieceAtPosition((Position) o1.get(o1.size()-1)).getID() - getPieceAtPosition((Position) o2.get(o2.size()-1)).getID();
+            if(firstPlayerPositions.contains(o1)){
+                return firstPlayerPositions.indexOf(o1) - firstPlayerPositions.indexOf(o2);
+            } else {
+                return secondPlayerPositions.indexOf(o1) - secondPlayerPositions.indexOf(o2);
+            }
+               //return getPieceAtPosition((Position) o1.get(o1.size() - 1)).getID() - getPieceAtPosition((Position) o2.get(o2.size() - 1)).getID();
+
            }
            return o1.size() - o2.size();
        }
@@ -479,28 +487,30 @@ public class GameLogic implements PlayableLogic {
         ArrayList<ArrayList<Position>> allPos = new ArrayList<>();
         for (int i = 0; i < firstPlayerPositions.size(); i++) {
             if(firstPlayerPositions.get(i).size() > 1){
-                allPos.add(firstPlayerPositions.get(i));
+                allPos.add(new ArrayList<>(firstPlayerPositions.get(i)));
             }
         }
+
         for (int i = 0; i < secondPlayerPositions.size(); i++) {
             if(secondPlayerPositions.get(i).size() > 1){
-                allPos.add(secondPlayerPositions.get(i));
+                allPos.add(new ArrayList<>(secondPlayerPositions.get(i)));
             }
         }
+
 //        allPos.addAll(firstPlayerPositions);
 //        allPos.addAll(secondPlayerPositions);
 
         allPos.sort(travelComparator);
         for (int i = 0; i < allPos.size(); i++) {
-            ConcretePiece piece = getPieceAtPosition(allPos.get(i).get(allPos.get(i).size()-1));
-            if(piece.getOwner() == firstPlayer){
-                if(piece.getID() != 7){
-                System.out.println("D"+piece.getID()+": "+computeSteps(allPos.get(i))+" squares");
+
+            if(refBoard[allPos.get(i).get(0).getCol()][allPos.get(i).get(0).getRow()].getOwner() == firstPlayer){
+                if(refBoard[allPos.get(i).get(0).getCol()][allPos.get(i).get(0).getRow()].getID() != 7){
+                System.out.println("D"+refBoard[allPos.get(i).get(0).getCol()][allPos.get(i).get(0).getRow()].getID()+": "+computeSteps(allPos.get(i))+" squares");
                 } else {
-                    System.out.println("K"+piece.getID()+": "+computeSteps(allPos.get(i))+" squares");
+                    System.out.println("K7: "+computeSteps(allPos.get(i))+" squares");
                 }
             } else {
-                System.out.println("A"+piece.getID()+": "+computeSteps(allPos.get(i))+" squares");
+                System.out.println("A"+refBoard[allPos.get(i).get(0).getCol()][allPos.get(i).get(0).getRow()].getID()+": "+computeSteps(allPos.get(i))+" squares");
             }
 
         }
@@ -519,17 +529,17 @@ public class GameLogic implements PlayableLogic {
     Comparator<ArrayList<Position>> travelComparator = new Comparator<ArrayList<Position>>() {
         @Override
         public int compare(ArrayList<Position> o1, ArrayList<Position> o2) {
-            ConcretePiece o1Piece = getPieceAtPosition(o1.get(o1.size()-1));
-            ConcretePiece o2Piece = getPieceAtPosition(o2.get(o2.size()-1));
+
             if(computeSteps(o1) == computeSteps(o2)){
-                if(o1Piece.getID() == o2Piece.getID()){
-                    if(currentWinner == -1 && o1Piece.getOwner() == secondPlayer){
-                        return 1;
-                    } else {
+
+                if(refBoard[o1.get(0).getCol()][o1.get(0).getRow()].getID() == refBoard[o2.get(0).getCol()][o2.get(0).getRow()].getID()){
+                    if(currentWinner == -1 && refBoard[o1.get(0).getCol()][o1.get(0).getRow()].getOwner() == secondPlayer){
                         return -1;
+                    } else {
+                        return 1;
                     }
                 }
-                return o1Piece.getID() - o2Piece.getID();
+                return refBoard[o1.get(0).getCol()][o1.get(0).getRow()].getID() - refBoard[o2.get(0).getCol()][o2.get(0).getRow()].getID();
             }
             return computeSteps(o2) - computeSteps(o1);
         }
@@ -541,7 +551,10 @@ public class GameLogic implements PlayableLogic {
     private void printAttackersHistory(){
         for (int i = 0; i < secondPlayerPositions.size(); i++) {
             if(secondPlayerPositions.get(i).size() > 1 && secondPlayerPositions.get(i).get(0) != null) {
-                System.out.print("A" + getPieceAtPosition(secondPlayerPositions.get(i).get(secondPlayerPositions.get(i).size()-1)).getID() + ": [");
+
+                    System.out.print("A" + refBoard[secondPlayerPositions.get(i).get(0).getCol()][secondPlayerPositions.get(i).get(0).getRow()].getID() + ": [");
+
+
                 for (int j = 0; j < secondPlayerPositions.get(i).size(); j++) {
                     if(j != secondPlayerPositions.get(i).size() -1){
                     System.out.print(secondPlayerPositions.get(i).get(j)+", ");}
@@ -562,10 +575,10 @@ public class GameLogic implements PlayableLogic {
     private void printDefendersHistory(){
         for (int i = 0; i < firstPlayerPositions.size(); i++) {
             if(firstPlayerPositions.get(i) != null && !firstPlayerPositions.get(i).isEmpty() && firstPlayerPositions.get(i).size() > 1 && firstPlayerPositions.get(i).get(0) != null) {
-                if(getPieceAtPosition(firstPlayerPositions.get(i).get(firstPlayerPositions.get(i).size()-1)).getID() != 7){
-                System.out.print("D" + getPieceAtPosition(firstPlayerPositions.get(i).get(firstPlayerPositions.get(i).size()-1)).getID() + ": [");
+                if(refBoard[firstPlayerPositions.get(i).get(0).getCol()][firstPlayerPositions.get(i).get(0).getRow()].getID() != 7){
+                System.out.print("D" + refBoard[firstPlayerPositions.get(i).get(0).getCol()][firstPlayerPositions.get(i).get(0).getRow()].getID() + ": [");
                 } else {
-                    System.out.print("K" + getPieceAtPosition(firstPlayerPositions.get(i).get(firstPlayerPositions.get(i).size()-1)).getID() + ": [");
+                    System.out.print("K" + refBoard[firstPlayerPositions.get(i).get(0).getCol()][firstPlayerPositions.get(i).get(0).getRow()].getID() + ": [");
                 }
                 for (int j = 0; j < firstPlayerPositions.get(i).size(); j++) {
                     if(j != firstPlayerPositions.get(i).size() -1){
@@ -724,8 +737,8 @@ public class GameLogic implements PlayableLogic {
      */
     @Override
     public void reset() {
-        secondPlayer = new ConcretePlayer(false); // Attackers
-        firstPlayer = new ConcretePlayer(true); // Defender
+        //secondPlayer = new ConcretePlayer(false); // Attackers
+        //firstPlayer = new ConcretePlayer(true); // Defender
             this.isSecondPlayerTurn = true;
             for(int i = 0; i < getBoardSize(); i++){
                 for (int j = 0; j < getBoardSize(); j++) {
@@ -743,18 +756,19 @@ public class GameLogic implements PlayableLogic {
      */
     public void start(){
         gameBoard = new ConcretePiece[getBoardSize()][getBoardSize()];
+        refBoard = new ConcretePiece[getBoardSize()][getBoardSize()];
         currentWinner = 0; // 0 = No one won yet. 1 = Defenders won last. -1 = Attackers won last.
         firstPlayerPositions = new ArrayList<>();
         secondPlayerPositions = new ArrayList<>();
-        squareHistory = new ArrayList[getBoardSize()][getBoardSize()];
+        //squareHistory = new ArrayList[getBoardSize()][getBoardSize()];
         gameBoardHistory = new Stack<>();
 
         // DEFENDERS POSITION TRACKER
-        for (int i = 0; i <= 14; i++) {
+        for (int i = 0; i <= 13; i++) {
             firstPlayerPositions.add(i, new ArrayList<Position>());
         }
         // ATTACKERS POSITIONS TRACKER
-        for (int i = 0; i <= 25; i++) {
+        for (int i = 0; i <= 24; i++) {
             secondPlayerPositions.add(i, new ArrayList<Position>());
         }
 
@@ -767,17 +781,21 @@ public class GameLogic implements PlayableLogic {
 
         attackerInitializer();
         defenderInitializer();
+        refattackerInitializer();
+        refdefenderInitializer();
 
         for (int i = 0; i < getBoardSize(); i++) {
             for (int j = 0; j < getBoardSize(); j++) {
                 if(gameBoard[i][j] != null && getPieceAtPosition(new Position(j, i)) != null){
                     if(getPieceAtPosition(new Position(j, i)).getOwner() == firstPlayer){
-                        firstPlayerPositions.get(getPieceAtPosition(new Position(i, j)).getID()).add(new Position(i, j));
-                        squareHistory[i][j].add(getPieceAtPosition(new Position(i, j)));
+                        firstPlayerPositions.get(getPieceAtPosition(new Position(j, i)).getID()).add(new Position(j, i));
+                        squareHistory[i][j] = new ArrayList<ConcretePiece>();
+                        squareHistory[i][j].add(getPieceAtPosition(new Position(j, i)));
                     }
                     else {
-                        secondPlayerPositions.get(getPieceAtPosition(new Position(i, j)).getID()).add(new Position(i, j));
-                        squareHistory[i][j].add(getPieceAtPosition(new Position(i, j)));
+                        secondPlayerPositions.get(getPieceAtPosition(new Position(j, i)).getID()).add(new Position(j, i));
+                        squareHistory[i][j] = new ArrayList<ConcretePiece>();
+                        squareHistory[i][j].add(getPieceAtPosition(new Position(j, i)));
                     }
                 }
             }
@@ -839,6 +857,54 @@ public class GameLogic implements PlayableLogic {
         }
 
     }
+    private void refdefenderInitializer() {
+        int id = 2;
+        refBoard[5][3] = new Pawn(this.firstPlayer, 1);
+        refBoard[5][7] = new Pawn(this.firstPlayer, 13);
+        for (int i = 0; i < 3; i++) {
+            refBoard[i + 4][4] = new Pawn(this.firstPlayer, id++);
+        }
+        for (int i = 0; i < 5; i++) {
+            if(i == 2){
+                refBoard[5][5] = new King(firstPlayer, 7);
+                id++;
+                continue;
+            } refBoard[i + 3][5] = new Pawn(this.firstPlayer, id++);
+        }
+        for (int i = 0; i < 3; i++) {
+            refBoard[i + 4][6] = new Pawn(this.firstPlayer, id++);
+        }
+    }
+
+    /**
+     * attackersInitializer: initializes the second team (attackers) on the game board.
+     */
+    private void refattackerInitializer() {
+        for (int i = 0; i < 5; i++) {
+            refBoard[i + 3][0] = new Pawn(this.secondPlayer, i +1);
+            refBoard[i + 3][10] = new Pawn(this.secondPlayer, 20 + i);
+        }
+        refBoard[5][1] = new Pawn(this.secondPlayer, 6);
+        refBoard[5][9] = new Pawn(this.secondPlayer, 19);
+        int id = 7;
+        for (int i = 0; i < 2; i++) {
+            refBoard[0][i + 3] = new Pawn(this.secondPlayer, id);
+            refBoard[10][i + 3] = new Pawn(this.secondPlayer, id+1);
+            id+=2;
+        }
+        for (int i = 0; i < 2; i++) {
+            refBoard[i][5] = new Pawn(this.secondPlayer, i + 11);
+            refBoard[10 - i][5] = new Pawn(this.secondPlayer, 14 - i);
+        }
+        id = 15;
+        for (int i = 0; i < 2; i++) {
+            refBoard[0][i + 6] = new Pawn(this.secondPlayer, id);
+            refBoard[10][i + 6] = new Pawn(this.secondPlayer, id+1);
+            id+=2;
+        }
+
+
+}
 
     /**
      * undoLastMove: using a data structure of stack that holds
